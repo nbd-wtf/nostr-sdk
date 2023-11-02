@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"time"
 
-	"github.com/dgraph-io/ristretto"
+	ristretto "github.com/fiatjaf/generic-ristretto"
 )
 
 type RistrettoCache[V any] struct {

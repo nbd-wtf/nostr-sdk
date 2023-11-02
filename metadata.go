@@ -10,8 +10,8 @@ import (
 )
 
 type ProfileMetadata struct {
-	pubkey string
-	event  *nostr.Event
+	PubKey string       `json:"-"`
+	Event  *nostr.Event `json:"-"`
 
 	Name        string `json:"name,omitempty"`
 	DisplayName string `json:"display_name,omitempty"`
@@ -24,13 +24,24 @@ type ProfileMetadata struct {
 }
 
 func (p ProfileMetadata) Npub() string {
-	v, _ := nip19.EncodePublicKey(p.pubkey)
+	v, _ := nip19.EncodePublicKey(p.PubKey)
 	return v
 }
 
 func (p ProfileMetadata) Nprofile(ctx context.Context, sys *System, nrelays int) string {
-	v, _ := nip19.EncodeProfile(p.pubkey, sys.FetchOutboxRelays(ctx, p.pubkey))
+	v, _ := nip19.EncodeProfile(p.PubKey, sys.FetchOutboxRelays(ctx, p.PubKey))
 	return v
+}
+
+func (p ProfileMetadata) ShortName() string {
+	if p.Name != "" {
+		return p.Name
+	}
+	if p.DisplayName != "" {
+		return p.DisplayName
+	}
+	npub := p.Npub()
+	return npub[0:7] + "…" + npub[58:]
 }
 
 func FetchProfileMetadata(ctx context.Context, pool *nostr.SimplePool, pubkey string, relays ...string) ProfileMetadata {
@@ -47,13 +58,13 @@ func FetchProfileMetadata(ctx context.Context, pool *nostr.SimplePool, pubkey st
 
 	for ie := range ch {
 		if m, err := ParseMetadata(ie.Event); err == nil {
-			m.pubkey = pubkey
-			m.event = ie.Event
+			m.PubKey = pubkey
+			m.Event = ie.Event
 			return *m
 		}
 	}
 
-	return ProfileMetadata{pubkey: pubkey}
+	return ProfileMetadata{PubKey: pubkey}
 }
 
 func ParseMetadata(event *nostr.Event) (*ProfileMetadata, error) {
