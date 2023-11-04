@@ -3,9 +3,9 @@ module github.com/nbd-wtf/nostr-sdk
 go 1.21
 
 require (
-	github.com/fiatjaf/eventstore v0.0.1
+	github.com/fiatjaf/eventstore v0.1.0
 	github.com/fiatjaf/generic-ristretto v0.0.1
-	github.com/nbd-wtf/go-nostr v0.24.2
+	github.com/nbd-wtf/go-nostr v0.25.0
 )
 
 require (
@@ -31,7 +31,3 @@ require (
 	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 )
-
-replace github.com/fiatjaf/eventstore => /home/fiatjaf/comp/eventstore
-
-replace github.com/nbd-wtf/go-nostr => /home/fiatjaf/comp/go-nostr
