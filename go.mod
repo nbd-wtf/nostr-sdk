@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/fiatjaf/eventstore v0.1.0
 	github.com/fiatjaf/generic-ristretto v0.0.1
-	github.com/nbd-wtf/go-nostr v0.25.0
+	github.com/nbd-wtf/go-nostr v0.25.3
 )
 
 require (

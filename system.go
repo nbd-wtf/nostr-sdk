@@ -48,9 +48,25 @@ func (sys System) FetchOutboxRelays(ctx context.Context, pubkey string) []string
 	return result
 }
 
+// FetchProfileMetadata fetches metadata for a given user from the local cache, or from the local store,
+// or, failing these, from the target user's defined outbox relays -- then caches the result.
 func (sys System) FetchProfileMetadata(ctx context.Context, pubkey string) ProfileMetadata {
+	pm, _ := sys.fetchProfileMetadata(ctx, pubkey)
+	return pm
+}
+
+// FetchOrStoreProfileMetadata is like FetchProfileMetadata, but also saves the result to the sys.Store
+func (sys System) FetchOrStoreProfileMetadata(ctx context.Context, pubkey string) ProfileMetadata {
+	pm, fromInternal := sys.fetchProfileMetadata(ctx, pubkey)
+	if !fromInternal {
+		sys.StoreRelay().Publish(ctx, *pm.Event)
+	}
+	return pm
+}
+
+func (sys System) fetchProfileMetadata(ctx context.Context, pubkey string) (pm ProfileMetadata, fromInternal bool) {
 	if v, ok := sys.MetadataCache.Get(pubkey); ok {
-		return v
+		return v, true
 	}
 
 	if sys.Store != nil {
@@ -60,7 +76,7 @@ func (sys System) FetchProfileMetadata(ctx context.Context, pubkey string) Profi
 				m.PubKey = pubkey
 				m.Event = res[0]
 				sys.MetadataCache.SetWithTTL(pubkey, *m, time.Hour*6)
-				return *m
+				return *m, true
 			}
 		}
 	}
@@ -74,5 +90,5 @@ func (sys System) FetchProfileMetadata(ctx context.Context, pubkey string) Profi
 	cancel()
 
 	sys.MetadataCache.SetWithTTL(pubkey, res, time.Hour*6)
-	return res
+	return res, false
 }
