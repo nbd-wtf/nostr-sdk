@@ -2,6 +2,8 @@ package sdk
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"time"
 
 	"github.com/fiatjaf/eventstore"
@@ -91,4 +93,37 @@ func (sys System) fetchProfileMetadata(ctx context.Context, pubkey string) (pm P
 
 	sys.MetadataCache.SetWithTTL(pubkey, res, time.Hour*6)
 	return res, false
+}
+
+// FetchUserEvents fetches events from each users' outbox relays, grouping queries when possible.
+func (sys System) FetchUserEvents(ctx context.Context, filter nostr.Filter) (map[string][]*nostr.Event, error) {
+	filters, err := sys.ExpandQueriesByAuthorAndRelays(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand queries: %w", err)
+	}
+
+	results := make(map[string][]*nostr.Event)
+	wg := sync.WaitGroup{}
+	wg.Add(len(filters))
+	for relay, filter := range filters {
+		go func(relay *nostr.Relay, filter nostr.Filter) {
+			defer wg.Done()
+			filter.Limit = filter.Limit * len(filter.Authors) // hack
+			sub, err := relay.Subscribe(ctx, nostr.Filters{filter})
+			if err != nil {
+				return
+			}
+			for {
+				select {
+				case evt := <-sub.Events:
+					results[evt.PubKey] = append(results[evt.PubKey], evt)
+				case <-sub.EndOfStoredEvents:
+					return
+				}
+			}
+		}(relay, filter)
+	}
+	wg.Wait()
+
+	return results, nil
 }
