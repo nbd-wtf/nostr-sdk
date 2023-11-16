@@ -58,8 +58,6 @@ func FetchProfileMetadata(ctx context.Context, pool *nostr.SimplePool, pubkey st
 
 	for ie := range ch {
 		if m, err := ParseMetadata(ie.Event); err == nil {
-			m.PubKey = pubkey
-			m.Event = ie.Event
 			return *m
 		}
 	}
@@ -80,6 +78,9 @@ func ParseMetadata(event *nostr.Event) (*ProfileMetadata, error) {
 		}
 		return nil, fmt.Errorf("failed to parse metadata (%s) from event %s: %w", cont, event.ID, err)
 	}
+
+	meta.PubKey = event.PubKey
+	meta.Event = event
 
 	return &meta, nil
 }
