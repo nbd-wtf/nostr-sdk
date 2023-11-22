@@ -77,8 +77,8 @@ func (sys System) fetchProfileMetadata(ctx context.Context, pubkey string) (pm P
 			if m, err := ParseMetadata(res[0]); err == nil {
 				m.PubKey = pubkey
 				m.Event = res[0]
-				sys.MetadataCache.SetWithTTL(pubkey, *m, time.Hour*6)
-				return *m, true
+				sys.MetadataCache.SetWithTTL(pubkey, m, time.Hour*6)
+				return m, true
 			}
 		}
 	}
