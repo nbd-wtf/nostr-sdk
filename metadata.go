@@ -10,9 +10,10 @@ import (
 )
 
 type ProfileMetadata struct {
-	PubKey string       `json:"-"`
-	Event  *nostr.Event `json:"-"`
+	PubKey string       `json:"-"` // must always be set otherwise things will break
+	Event  *nostr.Event `json:"-"` // may be empty if a profile metadata event wasn't found
 
+	// every one of these may be empty
 	Name        string `json:"name,omitempty"`
 	DisplayName string `json:"display_name,omitempty"`
 	About       string `json:"about,omitempty"`
