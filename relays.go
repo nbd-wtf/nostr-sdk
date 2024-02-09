@@ -3,6 +3,8 @@ package sdk
 import (
 	"context"
 	"encoding/json"
+	"sync"
+	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 )
@@ -13,37 +15,48 @@ type Relay struct {
 	Outbox bool
 }
 
-func FetchRelaysForPubkey(ctx context.Context, pool *nostr.SimplePool, pubkey string, relays ...string) []Relay {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	ch := pool.SubManyEose(ctx, relays, nostr.Filters{
-		{
-			Kinds: []int{
-				nostr.KindRelayListMetadata,
-				nostr.KindContactList,
-			},
-			Authors: []string{pubkey},
-			Limit:   2,
-		},
-	})
-
-	result := make([]Relay, 0, 20)
-	i := 0
-	for ie := range ch {
-		switch ie.Event.Kind {
-		case nostr.KindRelayListMetadata:
-			result = append(result, ParseRelaysFromKind10002(ie.Event)...)
-		case nostr.KindContactList:
-			result = append(result, ParseRelaysFromKind3(ie.Event)...)
-		}
-
-		i++
-		if i >= 2 {
-			break
-		}
+func (sys System) FetchRelays(ctx context.Context, pubkey string) []Relay {
+	if v, ok := sys.RelaysCache.Get(pubkey); ok {
+		return v
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	thunk10002 := sys.replaceableLoaders[10002].Load(ctx, pubkey)
+	thunk3 := sys.replaceableLoaders[3].Load(ctx, pubkey)
+
+	result := make([]Relay, 0, 20)
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		evt, err := thunk10002()
+		if err == nil {
+			result = append(result, ParseRelaysFromKind10002(evt)...)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		evt, err := thunk3()
+		if err == nil {
+			result = append(result, ParseRelaysFromKind3(evt)...)
+		}
+	}()
+
+	sys.RelaysCache.SetWithTTL(pubkey, result, time.Hour*6)
+	return result
+}
+
+func (sys System) FetchOutboxRelays(ctx context.Context, pubkey string) []string {
+	relays := sys.FetchRelays(ctx, pubkey)
+	result := make([]string, 0, len(relays))
+	for _, relay := range relays {
+		if relay.Outbox {
+			result = append(result, relay.URL)
+		}
+	}
 	return result
 }
 

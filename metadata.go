@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
@@ -45,25 +47,92 @@ func (p ProfileMetadata) ShortName() string {
 	return npub[0:7] + "…" + npub[58:]
 }
 
-func FetchProfileMetadata(ctx context.Context, pool *nostr.SimplePool, pubkey string, relays ...string) ProfileMetadata {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+// FetchProfileMetadata fetches metadata for a given user from the local cache, or from the local store,
+// or, failing these, from the target user's defined outbox relays -- then caches the result.
+func (sys System) FetchProfileMetadata(ctx context.Context, pubkey string) ProfileMetadata {
+	pm, _ := sys.fetchProfileMetadata(ctx, pubkey)
+	return pm
+}
 
-	ch := pool.SubManyEose(ctx, relays, nostr.Filters{
-		{
-			Kinds:   []int{nostr.KindProfileMetadata},
-			Authors: []string{pubkey},
-			Limit:   1,
-		},
-	})
+// FetchOrStoreProfileMetadata is like FetchProfileMetadata, but also saves the result to the sys.Store
+func (sys System) FetchOrStoreProfileMetadata(ctx context.Context, pubkey string) ProfileMetadata {
+	pm, fromInternal := sys.fetchProfileMetadata(ctx, pubkey)
+	if !fromInternal && pm.Event != nil {
+		sys.StoreRelay().Publish(ctx, *pm.Event)
+	}
+	return pm
+}
 
-	for ie := range ch {
-		if m, err := ParseMetadata(ie.Event); err == nil {
-			return m
+func (sys System) fetchProfileMetadata(ctx context.Context, pubkey string) (pm ProfileMetadata, fromInternal bool) {
+	if pm, fromInternal = sys.LoadProfileMetadataFromCache(ctx, pubkey); fromInternal {
+		return pm, fromInternal
+	}
+
+	meta := ProfileMetadata{PubKey: pubkey}
+
+	thunk0 := sys.replaceableLoaders[0].Load(ctx, pubkey)
+	evt, err := thunk0()
+	if err == nil {
+		meta, err = ParseMetadata(evt)
+		if err == nil {
+			sys.MetadataCache.SetWithTTL(pubkey, meta, time.Hour*6)
 		}
 	}
 
-	return ProfileMetadata{PubKey: pubkey}
+	return meta, false
+}
+
+func (sys System) LoadProfileMetadataFromCache(ctx context.Context, pubkey string) (ProfileMetadata, bool) {
+	if v, ok := sys.MetadataCache.Get(pubkey); ok {
+		return v, true
+	}
+
+	if sys.Store != nil {
+		res, _ := sys.StoreRelay().QuerySync(ctx, nostr.Filter{Kinds: []int{0}, Authors: []string{pubkey}})
+		if len(res) != 0 {
+			if m, err := ParseMetadata(res[0]); err == nil {
+				m.PubKey = pubkey
+				m.Event = res[0]
+				sys.MetadataCache.SetWithTTL(pubkey, m, time.Hour*6)
+				return m, true
+			}
+		}
+	}
+
+	return ProfileMetadata{PubKey: pubkey}, false
+}
+
+// FetchUserEvents fetches events from each users' outbox relays, grouping queries when possible.
+func (sys System) FetchUserEvents(ctx context.Context, filter nostr.Filter) (map[string][]*nostr.Event, error) {
+	filters, err := sys.ExpandQueriesByAuthorAndRelays(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand queries: %w", err)
+	}
+
+	results := make(map[string][]*nostr.Event)
+	wg := sync.WaitGroup{}
+	wg.Add(len(filters))
+	for relay, filter := range filters {
+		go func(relay *nostr.Relay, filter nostr.Filter) {
+			defer wg.Done()
+			filter.Limit = filter.Limit * len(filter.Authors) // hack
+			sub, err := relay.Subscribe(ctx, nostr.Filters{filter})
+			if err != nil {
+				return
+			}
+			for {
+				select {
+				case evt := <-sub.Events:
+					results[evt.PubKey] = append(results[evt.PubKey], evt)
+				case <-sub.EndOfStoredEvents:
+					return
+				}
+			}
+		}(relay, filter)
+	}
+	wg.Wait()
+
+	return results, nil
 }
 
 func ParseMetadata(event *nostr.Event) (meta ProfileMetadata, err error) {
