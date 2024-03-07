@@ -6,7 +6,7 @@ require (
 	github.com/fiatjaf/eventstore v0.3.11
 	github.com/fiatjaf/generic-ristretto v0.0.1
 	github.com/graph-gophers/dataloader/v7 v7.1.0
-	github.com/nbd-wtf/go-nostr v0.28.5
+	github.com/nbd-wtf/go-nostr v0.29.1
 )
 
 require (
@@ -28,6 +28,8 @@ require (
 	github.com/tidwall/gjson v1.17.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
+	golang.org/x/crypto v0.7.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/text v0.8.0 // indirect
 )
