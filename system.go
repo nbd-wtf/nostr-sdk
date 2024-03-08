@@ -17,6 +17,7 @@ type System struct {
 	FollowListRelays []string
 	MetadataRelays   []string
 	Store            eventstore.Store
+	Signer           Signer
 
 	relayStore         nostr.RelayStore
 	replaceableLoaders map[int]*dataloader.Loader[string, *nostr.Event]
