@@ -2,20 +2,25 @@ package sdk
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/nostr-sdk/cache"
 )
 
-type GenericList[I any] struct {
+type GenericList[I TagItemWithValue] struct {
 	PubKey string       `json:"-"` // must always be set otherwise things will break
 	Event  *nostr.Event `json:"-"` // may be empty if a contact list event wasn't found
 
 	Items []I
 }
 
-func fetchGenericList[I any](
+type TagItemWithValue interface {
+	Value() string
+}
+
+func fetchGenericList[I TagItemWithValue](
 	sys *system,
 	ctx context.Context,
 	pubkey string,
@@ -61,7 +66,7 @@ func fetchGenericList[I any](
 	return v, false
 }
 
-func parseItemsFromEventTags[I any](
+func parseItemsFromEventTags[I TagItemWithValue](
 	evt *nostr.Event,
 	parseTag func(nostr.Tag) (I, bool),
 ) []I {

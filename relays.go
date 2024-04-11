@@ -14,6 +14,8 @@ type Relay struct {
 	Outbox bool
 }
 
+func (r Relay) Value() string { return r.URL }
+
 func (sys *system) FetchRelays(ctx context.Context, pubkey string) RelayList {
 	rl, _ := fetchGenericList[Relay](sys, ctx, pubkey, 3, parseRelayFromKind10002, sys.RelayListCache, false)
 	return rl
