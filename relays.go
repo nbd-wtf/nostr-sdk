@@ -18,6 +18,9 @@ func (r Relay) Value() string { return r.URL }
 
 func (sys *system) FetchRelays(ctx context.Context, pubkey string) RelayList {
 	rl, _ := fetchGenericList[Relay](sys, ctx, pubkey, 3, parseRelayFromKind10002, sys.RelayListCache, false)
+	if len(rl.Items) == 0 {
+		rl.Items = append(rl.Items, Relay{"wss://relay.damus.io", true, true}, Relay{"wss://nos.lol", true, true})
+	}
 	return rl
 }
 
