@@ -121,11 +121,13 @@ func (sys *system) determineRelaysToQuery(ctx context.Context, pubkey string, ki
 	// use a different set of extra relays depending on the kind
 	switch kind {
 	case 0:
-		relays = append(relays, sys.MetadataRelays...)
+		relays = append(relays, pickNext(sys.MetadataRelays), pickNext(sys.MetadataRelays))
 	case 3:
-		relays = append(relays, sys.FollowListRelays...)
+		relays = append(relays, pickNext(sys.FollowListRelays), pickNext(sys.FollowListRelays))
 	case 10002:
-		relays = append(relays, sys.RelayListRelays...)
+		relays = append(relays, pickNext(sys.RelayListRelays), pickNext(sys.RelayListRelays))
+	default:
+		relays = append(relays, pickNext(sys.FallbackRelays), pickNext(sys.FallbackRelays))
 	}
 
 	return relays

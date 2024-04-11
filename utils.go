@@ -34,3 +34,10 @@ func DoThisNotMoreThanOnceAnHour(key string) (doItNow bool) {
 	_, exists := _dtnmtoah[key]
 	return !exists
 }
+
+var serial = 0
+
+func pickNext(list []string) string {
+	serial++
+	return list[serial%len(list)]
+}

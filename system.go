@@ -19,6 +19,7 @@ type system struct {
 	RelayListRelays  []string
 	FollowListRelays []string
 	MetadataRelays   []string
+	FallbackRelays   []string
 	Store            eventstore.Store
 	Signer           Signer
 
@@ -37,6 +38,17 @@ func System(mods ...SystemModifier) *system {
 		RelayListRelays:  []string{"wss://purplepag.es", "wss://user.kindpag.es", "wss://relay.nos.social"},
 		FollowListRelays: []string{"wss://purplepag.es", "wss://user.kindpag.es", "wss://relay.nos.social"},
 		MetadataRelays:   []string{"wss://purplepag.es", "wss://user.kindpag.es", "wss://relay.nos.social"},
+		FallbackRelays: []string{
+			"wss://relay.primal.net",
+			"wss://relay.damus.io",
+			"wss://nostr.wine",
+			"wss://nostr.mom",
+			"wss://offchain.pub",
+			"wss://nos.lol",
+			"wss://mostr.pub",
+			"wss://relay.nostr.band",
+			"wss://nostr21.com",
+		},
 	}
 
 	for _, mod := range mods {
@@ -70,6 +82,12 @@ func WithMetadataRelays(list []string) SystemModifier {
 func WithFollowListRelays(list []string) SystemModifier {
 	return func(sys *system) {
 		sys.FollowListRelays = list
+	}
+}
+
+func WithFallbackRelays(list []string) SystemModifier {
+	return func(sys *system) {
+		sys.FallbackRelays = list
 	}
 }
 
