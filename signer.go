@@ -26,7 +26,7 @@ type SignerOptions struct {
 	PasswordHandler       func() string
 }
 
-func (sys System) InitSigner(ctx context.Context, input string, opts *SignerOptions) error {
+func (sys *system) InitSigner(ctx context.Context, input string, opts *SignerOptions) error {
 	if opts == nil {
 		opts = &SignerOptions{}
 	}

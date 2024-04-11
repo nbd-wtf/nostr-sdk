@@ -8,7 +8,7 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 )
 
-func (sys *System) ExpandQueriesByAuthorAndRelays(
+func (sys *system) ExpandQueriesByAuthorAndRelays(
 	ctx context.Context,
 	filter nostr.Filter,
 ) (map[*nostr.Relay]nostr.Filter, error) {

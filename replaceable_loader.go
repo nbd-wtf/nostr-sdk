@@ -13,14 +13,14 @@ import (
 
 type EventResult dataloader.Result[*nostr.Event]
 
-func (sys *System) initializeDataloaders() {
+func (sys *system) initializeDataloaders() {
 	sys.replaceableLoaders = make(map[int]*dataloader.Loader[string, *nostr.Event])
 	for _, kind := range []int{0, 3, 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10015, 10030} {
 		sys.replaceableLoaders[kind] = sys.createReplaceableDataloader(kind)
 	}
 }
 
-func (sys System) createReplaceableDataloader(kind int) *dataloader.Loader[string, *nostr.Event] {
+func (sys *system) createReplaceableDataloader(kind int) *dataloader.Loader[string, *nostr.Event] {
 	return dataloader.NewBatchedLoader(
 		func(
 			ctx context.Context,
@@ -34,7 +34,7 @@ func (sys System) createReplaceableDataloader(kind int) *dataloader.Loader[strin
 	)
 }
 
-func (sys System) batchLoadReplaceableEvents(
+func (sys *system) batchLoadReplaceableEvents(
 	ctx context.Context,
 	kind int,
 	pubkeys []string,
@@ -109,7 +109,7 @@ func (sys System) batchLoadReplaceableEvents(
 	}
 }
 
-func (sys System) determineRelaysToQuery(ctx context.Context, pubkey string, kind int) []string {
+func (sys *system) determineRelaysToQuery(ctx context.Context, pubkey string, kind int) []string {
 	relays := make([]string, 0, 10)
 
 	// search in specific relays for user
@@ -137,7 +137,7 @@ func (sys System) determineRelaysToQuery(ctx context.Context, pubkey string, kin
 // the number of expected events is given by the number of pubkeys in the .Authors filter field.
 // because of that, batchReplaceableRelayQueries is only suitable for querying replaceable events -- and
 // care must be taken to not include the same pubkey more than once in the filter .Authors array.
-func (sys System) batchReplaceableRelayQueries(
+func (sys *system) batchReplaceableRelayQueries(
 	ctx context.Context,
 	relayFilters map[string]nostr.Filter,
 ) <-chan *nostr.Event {
