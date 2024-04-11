@@ -76,7 +76,10 @@ func parseItemsFromEventTags[I TagItemWithValue](
 	for _, tag := range evt.Tags {
 		item, ok := parseTag(tag)
 		if ok {
-			result = append(result, item)
+			// check if this already exists before adding
+			if slices.IndexFunc(result, func(i I) bool { return i.Value() == item.Value() }) == -1 {
+				result = append(result, item)
+			}
 		}
 	}
 	return result
