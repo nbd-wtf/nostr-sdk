@@ -33,19 +33,19 @@ func fetchGenericList[I TagItemWithValue](
 		if v, ok := cache.Get(pubkey); ok {
 			return v, true
 		}
+	}
 
-		if sys.Store != nil {
-			events, _ := sys.StoreRelay.QuerySync(ctx, nostr.Filter{Kinds: []int{kind}, Authors: []string{pubkey}})
-			if len(events) != 0 {
-				items := parseItemsFromEventTags(events[0], parseTag)
-				v := GenericList[I]{
-					PubKey: pubkey,
-					Event:  events[0],
-					Items:  items,
-				}
-				cache.SetWithTTL(pubkey, v, time.Hour*6)
-				return v, true
+	if sys.Store != nil {
+		events, _ := sys.StoreRelay.QuerySync(ctx, nostr.Filter{Kinds: []int{kind}, Authors: []string{pubkey}})
+		if len(events) != 0 {
+			items := parseItemsFromEventTags(events[0], parseTag)
+			v := GenericList[I]{
+				PubKey: pubkey,
+				Event:  events[0],
+				Items:  items,
 			}
+			cache.SetWithTTL(pubkey, v, time.Hour*6)
+			return v, true
 		}
 	}
 
@@ -56,7 +56,9 @@ func fetchGenericList[I TagItemWithValue](
 		if err == nil {
 			items := parseItemsFromEventTags(evt, parseTag)
 			v.Items = items
-			cache.SetWithTTL(pubkey, v, time.Hour*6)
+			if cache != nil {
+				cache.SetWithTTL(pubkey, v, time.Hour*6)
+			}
 			if sys.Store != nil {
 				sys.StoreRelay.Publish(ctx, *evt)
 			}
