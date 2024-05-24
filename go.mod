@@ -6,7 +6,7 @@ require (
 	github.com/fiatjaf/eventstore v0.3.11
 	github.com/fiatjaf/generic-ristretto v0.0.1
 	github.com/graph-gophers/dataloader/v7 v7.1.0
-	github.com/nbd-wtf/go-nostr v0.29.1
+	github.com/nbd-wtf/go-nostr v0.31.3
 )
 
 require (
