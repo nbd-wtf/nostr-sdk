@@ -43,7 +43,7 @@ func (sys *system) InitSigner(ctx context.Context, input string, opts *SignerOpt
 			}
 			return fmt.Errorf("failed to decrypt with given password: %w", err)
 		}
-		pk, _ := nostr.GetPublicKey(input)
+		pk, _ := nostr.GetPublicKey(sec)
 		sys.Signer = KeySigner{sec, pk}
 		return nil
 	} else if nip46.IsValidBunkerURL(input) || nip05.IsValidIdentifier(input) {
