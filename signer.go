@@ -64,7 +64,7 @@ func (sys *system) InitSigner(ctx context.Context, input string, opts *SignerOpt
 		sys.Signer = BunkerSigner{bunker}
 	} else if prefix, parsed, err := nip19.Decode(input); err == nil && prefix == "nsec" {
 		sec := parsed.(string)
-		pk, _ := nostr.GetPublicKey(input)
+		pk, _ := nostr.GetPublicKey(sec)
 		sys.Signer = KeySigner{sec, pk}
 		return nil
 	} else if nostr.IsValid32ByteHex(input) {
