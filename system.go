@@ -20,6 +20,8 @@ type system struct {
 	FollowListRelays []string
 	MetadataRelays   []string
 	FallbackRelays   []string
+	UserSearchRelays []string
+	NoteSearchRelays []string
 	Store            eventstore.Store
 	Signer           Signer
 
@@ -48,6 +50,16 @@ func System(mods ...SystemModifier) *system {
 			"wss://mostr.pub",
 			"wss://relay.nostr.band",
 			"wss://nostr21.com",
+		},
+		UserSearchRelays: []string{
+			"wss://nostr.wine",
+			"wss://relay.nostr.band",
+			"wss://relay.noswhere.com",
+		},
+		NoteSearchRelays: []string{
+			"wss://nostr.wine",
+			"wss://relay.nostr.band",
+			"wss://relay.noswhere.com",
 		},
 	}
 
@@ -88,6 +100,18 @@ func WithFollowListRelays(list []string) SystemModifier {
 func WithFallbackRelays(list []string) SystemModifier {
 	return func(sys *system) {
 		sys.FallbackRelays = list
+	}
+}
+
+func WithUserSearchRelays(list []string) SystemModifier {
+	return func(sys *system) {
+		sys.UserSearchRelays = list
+	}
+}
+
+func WithNoteSearchRelays(list []string) SystemModifier {
+	return func(sys *system) {
+		sys.NoteSearchRelays = list
 	}
 }
 
