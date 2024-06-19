@@ -31,6 +31,11 @@ func (p ProfileMetadata) Npub() string {
 	return v
 }
 
+func (p ProfileMetadata) NpubShort() string {
+	npub := p.Npub()
+	return npub[0:7] + "…" + npub[58:]
+}
+
 func (p ProfileMetadata) Nprofile(ctx context.Context, sys *system, nrelays int) string {
 	v, _ := nip19.EncodeProfile(p.PubKey, sys.FetchOutboxRelays(ctx, p.PubKey))
 	return v
@@ -43,8 +48,7 @@ func (p ProfileMetadata) ShortName() string {
 	if p.DisplayName != "" {
 		return p.DisplayName
 	}
-	npub := p.Npub()
-	return npub[0:7] + "…" + npub[58:]
+	return p.NpubShort()
 }
 
 // FetchProfileMetadata fetches metadata for a given user from the local cache, or from the local store,
