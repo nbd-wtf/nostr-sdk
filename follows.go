@@ -18,7 +18,7 @@ type Follow struct {
 
 func (f Follow) Value() string { return f.Pubkey }
 
-func (sys *system) FetchFollowList(ctx context.Context, pubkey string) FollowList {
+func (sys *System) FetchFollowList(ctx context.Context, pubkey string) FollowList {
 	fl, _ := fetchGenericList[Follow](sys, ctx, pubkey, 3, parseFollow, sys.FollowListCache, false)
 	return fl
 }

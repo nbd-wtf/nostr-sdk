@@ -36,7 +36,7 @@ func (p ProfileMetadata) NpubShort() string {
 	return npub[0:7] + "…" + npub[58:]
 }
 
-func (p ProfileMetadata) Nprofile(ctx context.Context, sys *system, nrelays int) string {
+func (p ProfileMetadata) Nprofile(ctx context.Context, sys *System, nrelays int) string {
 	v, _ := nip19.EncodeProfile(p.PubKey, sys.FetchOutboxRelays(ctx, p.PubKey))
 	return v
 }
@@ -53,13 +53,13 @@ func (p ProfileMetadata) ShortName() string {
 
 // FetchProfileMetadata fetches metadata for a given user from the local cache, or from the local store,
 // or, failing these, from the target user's defined outbox relays -- then caches the result.
-func (sys *system) FetchProfileMetadata(ctx context.Context, pubkey string) ProfileMetadata {
+func (sys *System) FetchProfileMetadata(ctx context.Context, pubkey string) ProfileMetadata {
 	pm, _ := sys.fetchProfileMetadata(ctx, pubkey)
 	return pm
 }
 
 // FetchOrStoreProfileMetadata is like FetchProfileMetadata, but also saves the result to the sys.Store
-func (sys *system) FetchOrStoreProfileMetadata(ctx context.Context, pubkey string) ProfileMetadata {
+func (sys *System) FetchOrStoreProfileMetadata(ctx context.Context, pubkey string) ProfileMetadata {
 	pm, fromInternal := sys.fetchProfileMetadata(ctx, pubkey)
 	if !fromInternal && pm.Event != nil {
 		sys.StoreRelay.Publish(ctx, *pm.Event)
@@ -67,7 +67,7 @@ func (sys *system) FetchOrStoreProfileMetadata(ctx context.Context, pubkey strin
 	return pm
 }
 
-func (sys *system) fetchProfileMetadata(ctx context.Context, pubkey string) (pm ProfileMetadata, fromInternal bool) {
+func (sys *System) fetchProfileMetadata(ctx context.Context, pubkey string) (pm ProfileMetadata, fromInternal bool) {
 	if pm, fromInternal = sys.LoadProfileMetadataFromCache(ctx, pubkey); fromInternal {
 		return pm, fromInternal
 	}
@@ -86,7 +86,7 @@ func (sys *system) fetchProfileMetadata(ctx context.Context, pubkey string) (pm 
 	return meta, false
 }
 
-func (sys *system) LoadProfileMetadataFromCache(ctx context.Context, pubkey string) (ProfileMetadata, bool) {
+func (sys *System) LoadProfileMetadataFromCache(ctx context.Context, pubkey string) (ProfileMetadata, bool) {
 	if v, ok := sys.MetadataCache.Get(pubkey); ok {
 		return v, true
 	}
@@ -107,7 +107,7 @@ func (sys *system) LoadProfileMetadataFromCache(ctx context.Context, pubkey stri
 }
 
 // FetchUserEvents fetches events from each users' outbox relays, grouping queries when possible.
-func (sys *system) FetchUserEvents(ctx context.Context, filter nostr.Filter) (map[string][]*nostr.Event, error) {
+func (sys *System) FetchUserEvents(ctx context.Context, filter nostr.Filter) (map[string][]*nostr.Event, error) {
 	filters, err := sys.ExpandQueriesByAuthorAndRelays(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand queries: %w", err)

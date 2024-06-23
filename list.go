@@ -21,7 +21,7 @@ type TagItemWithValue interface {
 }
 
 func fetchGenericList[I TagItemWithValue](
-	sys *system,
+	sys *System,
 	ctx context.Context,
 	pubkey string,
 	kind int,

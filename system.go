@@ -9,12 +9,14 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/nostr-sdk/cache"
 	cache_memory "github.com/nbd-wtf/nostr-sdk/cache/memory"
+	"github.com/nbd-wtf/nostr-sdk/hints"
 )
 
-type system struct {
+type System struct {
 	RelayListCache   cache.Cache32[RelayList]
 	FollowListCache  cache.Cache32[FollowList]
 	MetadataCache    cache.Cache32[ProfileMetadata]
+	Hints            hints.HintsDB
 	Pool             *nostr.SimplePool
 	RelayListRelays  []string
 	FollowListRelays []string
@@ -29,10 +31,10 @@ type system struct {
 	replaceableLoaders map[int]*dataloader.Loader[string, *nostr.Event]
 }
 
-type SystemModifier func(sys *system)
+type SystemModifier func(sys *System)
 
-func System(mods ...SystemModifier) *system {
-	sys := &system{
+func NewSystem(mods ...SystemModifier) *System {
+	sys := &System{
 		RelayListCache:   cache_memory.New32[RelayList](1000),
 		FollowListCache:  cache_memory.New32[FollowList](1000),
 		MetadataCache:    cache_memory.New32[ProfileMetadata](1000),
@@ -77,70 +79,70 @@ func System(mods ...SystemModifier) *system {
 	return sys
 }
 
-func (sys *system) Close() {}
+func (sys *System) Close() {}
 
 func WithRelayListRelays(list []string) SystemModifier {
-	return func(sys *system) {
+	return func(sys *System) {
 		sys.RelayListRelays = list
 	}
 }
 
 func WithMetadataRelays(list []string) SystemModifier {
-	return func(sys *system) {
+	return func(sys *System) {
 		sys.MetadataRelays = list
 	}
 }
 
 func WithFollowListRelays(list []string) SystemModifier {
-	return func(sys *system) {
+	return func(sys *System) {
 		sys.FollowListRelays = list
 	}
 }
 
 func WithFallbackRelays(list []string) SystemModifier {
-	return func(sys *system) {
+	return func(sys *System) {
 		sys.FallbackRelays = list
 	}
 }
 
 func WithUserSearchRelays(list []string) SystemModifier {
-	return func(sys *system) {
+	return func(sys *System) {
 		sys.UserSearchRelays = list
 	}
 }
 
 func WithNoteSearchRelays(list []string) SystemModifier {
-	return func(sys *system) {
+	return func(sys *System) {
 		sys.NoteSearchRelays = list
 	}
 }
 
 func WithPool(pool *nostr.SimplePool) SystemModifier {
-	return func(sys *system) {
+	return func(sys *System) {
 		sys.Pool = pool
 	}
 }
 
 func WithStore(store eventstore.Store) SystemModifier {
-	return func(sys *system) {
+	return func(sys *System) {
 		sys.Store = store
 	}
 }
 
 func WithRelayListCache(cache cache.Cache32[RelayList]) SystemModifier {
-	return func(sys *system) {
+	return func(sys *System) {
 		sys.RelayListCache = cache
 	}
 }
 
 func WithFollowListCache(cache cache.Cache32[FollowList]) SystemModifier {
-	return func(sys *system) {
+	return func(sys *System) {
 		sys.FollowListCache = cache
 	}
 }
 
 func WithMetadataCache(cache cache.Cache32[ProfileMetadata]) SystemModifier {
-	return func(sys *system) {
+	return func(sys *System) {
 		sys.MetadataCache = cache
 	}
 }

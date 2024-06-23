@@ -6,7 +6,7 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 )
 
-func (sys *system) SearchUsers(ctx context.Context, query string) []ProfileMetadata {
+func (sys *System) SearchUsers(ctx context.Context, query string) []ProfileMetadata {
 	limit := 10
 	profiles := make([]ProfileMetadata, 0, limit*len(sys.UserSearchRelays))
 

@@ -16,7 +16,7 @@ type Relay struct {
 
 func (r Relay) Value() string { return r.URL }
 
-func (sys *system) FetchRelays(ctx context.Context, pubkey string) RelayList {
+func (sys *System) FetchRelays(ctx context.Context, pubkey string) RelayList {
 	rl, _ := fetchGenericList[Relay](sys, ctx, pubkey, 10002, parseRelayFromKind10002, sys.RelayListCache, false)
 	if len(rl.Items) == 0 {
 		rl.Items = append(rl.Items, Relay{"wss://relay.damus.io", true, true}, Relay{"wss://nos.lol", true, true})
@@ -24,7 +24,7 @@ func (sys *system) FetchRelays(ctx context.Context, pubkey string) RelayList {
 	return rl
 }
 
-func (sys *system) FetchOutboxRelays(ctx context.Context, pubkey string) []string {
+func (sys *System) FetchOutboxRelays(ctx context.Context, pubkey string) []string {
 	rl := sys.FetchRelays(ctx, pubkey)
 	result := make([]string, 0, len(rl.Items))
 	for _, relay := range rl.Items {
