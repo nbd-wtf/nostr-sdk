@@ -25,7 +25,7 @@ func TestRelayPicking(t *testing.T) {
 
 	// key1: finding out
 	// add some random parameters things and see what we get
-	hdb.Save(key1, relayA, hints.LastInAssociatedEventTag, nostr.Now())
+	hdb.Save(key1, relayA, hints.LastInAssociatedEventTag, nostr.Now()-5*hour)
 	hdb.Save(key1, relayB, hints.LastInRelayList, nostr.Now()-day*10)
 	hdb.Save(key1, relayB, hints.LastInNevent, nostr.Now()-day*30)
 	hdb.Save(key1, relayA, hints.LastInNprofile, nostr.Now()-hour*10)
@@ -33,14 +33,14 @@ func TestRelayPicking(t *testing.T) {
 
 	require.Equal(t, []string{relayB, relayA}, hdb.TopN(key1, 3))
 
-	hdb.Save(key1, relayA, hints.LastFetchAttempt, nostr.Now())
-	hdb.Save(key1, relayC, hints.LastInNIP05, nostr.Now())
+	hdb.Save(key1, relayA, hints.LastFetchAttempt, nostr.Now()-5*hour)
+	hdb.Save(key1, relayC, hints.LastInNIP05, nostr.Now()-5*hour)
 	hdb.PrintScores()
 
 	require.Equal(t, []string{relayB, relayC, relayA}, hdb.TopN(key1, 3))
 
-	hdb.Save(key1, relayC, hints.LastInTag, nostr.Now())
-	hdb.Save(key1, relayC, hints.LastFetchAttempt, nostr.Now())
+	hdb.Save(key1, relayC, hints.LastInTag, nostr.Now()-5*hour)
+	hdb.Save(key1, relayC, hints.LastFetchAttempt, nostr.Now()-5*hour)
 	hdb.PrintScores()
 
 	require.Equal(t, []string{relayB, relayA, relayC}, hdb.TopN(key1, 3))
@@ -52,14 +52,14 @@ func TestRelayPicking(t *testing.T) {
 
 	// now let's try a different thing for key2
 	// key2 has a relay list with A and B
-	hdb.Save(key2, relayA, hints.LastInRelayList, nostr.Now()-day*10)
-	hdb.Save(key2, relayB, hints.LastInRelayList, nostr.Now()-day*10)
+	hdb.Save(key2, relayA, hints.LastInRelayList, nostr.Now()-day*25)
+	hdb.Save(key2, relayB, hints.LastInRelayList, nostr.Now()-day*25)
 
-	// but it's old (+10 days), recently we only see hints for relay C
-	hdb.Save(key2, relayC, hints.LastInTag, nostr.Now())
-	hdb.Save(key2, relayC, hints.LastInNIP05, nostr.Now())
-	hdb.Save(key2, relayC, hints.LastInNevent, nostr.Now())
-	hdb.Save(key2, relayC, hints.LastInNprofile, nostr.Now())
+	// but it's old, recently we only see hints for relay C
+	hdb.Save(key2, relayC, hints.LastInTag, nostr.Now()-5*hour)
+	hdb.Save(key2, relayC, hints.LastInNIP05, nostr.Now()-5*hour)
+	hdb.Save(key2, relayC, hints.LastInNevent, nostr.Now()-5*hour)
+	hdb.Save(key2, relayC, hints.LastInNprofile, nostr.Now()-5*hour)
 
 	// at this point we just barely see C coming first
 	hdb.PrintScores()
@@ -75,9 +75,9 @@ func TestRelayPicking(t *testing.T) {
 	require.Equal(t, []string{relayB, relayA}, hdb.TopN(key3, 3))
 
 	// we try to fetch events for key3 and we get a very recent one for relay A, an older for relay B
-	hdb.Save(key3, relayA, hints.LastFetchAttempt, nostr.Now())
+	hdb.Save(key3, relayA, hints.LastFetchAttempt, nostr.Now()-5*hour)
 	hdb.Save(key3, relayA, hints.MostRecentEventFetched, nostr.Now()-day)
-	hdb.Save(key3, relayB, hints.LastFetchAttempt, nostr.Now())
+	hdb.Save(key3, relayB, hints.LastFetchAttempt, nostr.Now()-5*hour)
 	hdb.Save(key3, relayB, hints.MostRecentEventFetched, nostr.Now()-day*30)
 	hdb.PrintScores()
 	require.Equal(t, []string{relayA, relayB}, hdb.TopN(key3, 3))
@@ -99,7 +99,7 @@ func TestRelayPicking(t *testing.T) {
 	hdb.Save(key4, relayB, hints.LastInNIP05, banDate+8*day)
 	hdb.Save(key4, relayB, hints.LastInNprofile, banDate+5*day)
 	hdb.PrintScores()
-	require.Equal(t, []string{relayB, relayA}, hdb.TopN(key4, 3))
+	require.Equal(t, []string{relayA, relayB}, hdb.TopN(key4, 3))
 
 	// information about the new relay starts to spread through relay hints in tags only
 	hdb.Save(key4, relayC, hints.LastInTag, nostr.Now()-5*day)
@@ -109,30 +109,30 @@ func TestRelayPicking(t *testing.T) {
 
 	// as long as we see one tag hint the new relay will already be in our map
 	hdb.PrintScores()
-	require.Equal(t, []string{relayB, relayA, relayC}, hdb.TopN(key4, 3))
+	require.Equal(t, []string{relayA, relayB, relayC}, hdb.TopN(key4, 3))
 
 	// client tries to fetch stuff from the old relays, but gets nothing new
-	hdb.Save(key4, relayA, hints.LastFetchAttempt, nostr.Now())
-	hdb.Save(key4, relayB, hints.LastFetchAttempt, nostr.Now())
+	hdb.Save(key4, relayA, hints.LastFetchAttempt, nostr.Now()-5*hour)
+	hdb.Save(key4, relayB, hints.LastFetchAttempt, nostr.Now()-5*hour)
 
 	// which is enough for us to transition to the new relay as the toppermost of the uppermost
 	hdb.PrintScores()
-	require.Equal(t, []string{relayC, relayB, relayA}, hdb.TopN(key4, 3))
+	require.Equal(t, []string{relayC, relayA, relayB}, hdb.TopN(key4, 3))
 
 	// what if the big relays are attempting to game this algorithm by allowing some of our
 	// events from time to time while still shadowbanning us?
-	hdb.Save(key4, relayA, hints.MostRecentEventFetched, nostr.Now()-3*day)
-	hdb.Save(key4, relayB, hints.MostRecentEventFetched, nostr.Now()-3*day)
+	hdb.Save(key4, relayA, hints.MostRecentEventFetched, nostr.Now()-5*hour)
+	hdb.Save(key4, relayB, hints.MostRecentEventFetched, nostr.Now()-5*hour)
 	hdb.PrintScores()
-	require.Equal(t, []string{relayB, relayA, relayC}, hdb.TopN(key4, 3))
+	require.Equal(t, []string{relayA, relayB, relayC}, hdb.TopN(key4, 3))
 
 	// we'll need overwhelming force from the third relay
 	// (actually just a relay list with just its name in it will be enough)
-	hdb.Save(key4, relayC, hints.LastFetchAttempt, nostr.Now())
+	hdb.Save(key4, relayC, hints.LastFetchAttempt, nostr.Now()-5*hour)
 	hdb.Save(key4, relayC, hints.MostRecentEventFetched, nostr.Now()-6*hour)
 	hdb.Save(key4, relayC, hints.LastInRelayList, nostr.Now()-6*hour)
 	hdb.PrintScores()
-	require.Equal(t, []string{relayC, relayB, relayA}, hdb.TopN(key4, 3))
+	require.Equal(t, []string{relayC, relayA, relayB}, hdb.TopN(key4, 3))
 
 	//
 	//
