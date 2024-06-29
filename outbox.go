@@ -18,6 +18,7 @@ func (sys *System) ExpandQueriesByAuthorAndRelays(
 	}
 
 	relaysForPubkey := make(map[string][]*nostr.Relay, n)
+	mu := sync.Mutex{}
 
 	wg := sync.WaitGroup{}
 	wg.Add(n)
@@ -31,7 +32,9 @@ func (sys *System) ExpandQueriesByAuthorAndRelays(
 				if err != nil {
 					continue
 				}
+				mu.Lock()
 				relaysForPubkey[pubkey] = append(relaysForPubkey[pubkey], relay)
+				mu.Unlock()
 				c++
 				if c == 3 {
 					return
