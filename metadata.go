@@ -127,7 +127,9 @@ func (sys *System) FetchUserEvents(ctx context.Context, filter nostr.Filter) (ma
 			for {
 				select {
 				case evt := <-sub.Events:
-					results[evt.PubKey] = append(results[evt.PubKey], evt)
+					if evt != nil {
+						results[evt.PubKey] = append(results[evt.PubKey], evt)
+					}
 				case <-sub.EndOfStoredEvents:
 					return
 				}
@@ -142,12 +144,12 @@ func (sys *System) FetchUserEvents(ctx context.Context, filter nostr.Filter) (ma
 func ParseMetadata(event *nostr.Event) (meta ProfileMetadata, err error) {
 	if event.Kind != 0 {
 		err = fmt.Errorf("event %s is kind %d, not 0", event.ID, event.Kind)
-	} else if err := json.Unmarshal([]byte(event.Content), &meta); err != nil {
+	} else if er := json.Unmarshal([]byte(event.Content), &meta); er != nil {
 		cont := event.Content
 		if len(cont) > 100 {
 			cont = cont[0:99]
 		}
-		err = fmt.Errorf("failed to parse metadata (%s) from event %s: %w", cont, event.ID, err)
+		err = fmt.Errorf("failed to parse metadata (%s) from event %s: %w", cont, event.ID, er)
 	}
 
 	meta.PubKey = event.PubKey
