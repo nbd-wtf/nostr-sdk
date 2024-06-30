@@ -10,6 +10,7 @@ import (
 	"github.com/nbd-wtf/nostr-sdk/cache"
 	cache_memory "github.com/nbd-wtf/nostr-sdk/cache/memory"
 	"github.com/nbd-wtf/nostr-sdk/hints"
+	memory_hints "github.com/nbd-wtf/nostr-sdk/hints/memory"
 )
 
 type System struct {
@@ -38,7 +39,6 @@ func NewSystem(mods ...SystemModifier) *System {
 		RelayListCache:   cache_memory.New32[RelayList](1000),
 		FollowListCache:  cache_memory.New32[FollowList](1000),
 		MetadataCache:    cache_memory.New32[ProfileMetadata](1000),
-		Pool:             nostr.NewSimplePool(context.Background()),
 		RelayListRelays:  []string{"wss://purplepag.es", "wss://user.kindpag.es", "wss://relay.nos.social"},
 		FollowListRelays: []string{"wss://purplepag.es", "wss://user.kindpag.es", "wss://relay.nos.social"},
 		MetadataRelays:   []string{"wss://purplepag.es", "wss://user.kindpag.es", "wss://relay.nos.social"},
@@ -63,7 +63,12 @@ func NewSystem(mods ...SystemModifier) *System {
 			"wss://relay.nostr.band",
 			"wss://relay.noswhere.com",
 		},
+		Hints: memory_hints.NewHintDB(),
 	}
+
+	sys.Pool = nostr.NewSimplePool(context.Background(),
+		nostr.WithEventMiddleware(sys.trackEventHints),
+	)
 
 	for _, mod := range mods {
 		mod(sys)
@@ -80,6 +85,12 @@ func NewSystem(mods ...SystemModifier) *System {
 }
 
 func (sys *System) Close() {}
+
+func WithHintsDB(hdb hints.HintsDB) SystemModifier {
+	return func(sys *System) {
+		sys.Hints = hdb
+	}
+}
 
 func WithRelayListRelays(list []string) SystemModifier {
 	return func(sys *System) {
@@ -114,12 +125,6 @@ func WithUserSearchRelays(list []string) SystemModifier {
 func WithNoteSearchRelays(list []string) SystemModifier {
 	return func(sys *System) {
 		sys.NoteSearchRelays = list
-	}
-}
-
-func WithPool(pool *nostr.SimplePool) SystemModifier {
-	return func(sys *System) {
-		sys.Pool = pool
 	}
 }
 
