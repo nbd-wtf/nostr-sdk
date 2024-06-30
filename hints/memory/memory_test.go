@@ -25,7 +25,7 @@ func TestRelayPicking(t *testing.T) {
 
 	// key1: finding out
 	// add some random parameters things and see what we get
-	hdb.Save(key1, relayA, hints.LastInAssociatedEventTag, nostr.Now()-5*hour)
+	hdb.Save(key1, relayA, hints.LastInTag, nostr.Now()-60*hour)
 	hdb.Save(key1, relayB, hints.LastInRelayList, nostr.Now()-day*10)
 	hdb.Save(key1, relayB, hints.LastInNevent, nostr.Now()-day*30)
 	hdb.Save(key1, relayA, hints.LastInNprofile, nostr.Now()-hour*10)
@@ -104,8 +104,8 @@ func TestRelayPicking(t *testing.T) {
 	// information about the new relay starts to spread through relay hints in tags only
 	hdb.Save(key4, relayC, hints.LastInTag, nostr.Now()-5*day)
 	hdb.Save(key4, relayC, hints.LastInTag, nostr.Now()-5*day)
-	hdb.Save(key4, relayC, hints.LastInAssociatedEventTag, nostr.Now()-5*day)
-	hdb.Save(key4, relayC, hints.LastInAssociatedEventTag, nostr.Now()-5*day)
+	hdb.Save(key4, relayC, hints.LastInNevent, nostr.Now()-5*day)
+	hdb.Save(key4, relayC, hints.LastInNIP05, nostr.Now()-5*day)
 
 	// as long as we see one tag hint the new relay will already be in our map
 	hdb.PrintScores()
