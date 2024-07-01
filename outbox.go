@@ -9,7 +9,9 @@ import (
 )
 
 func (sys *System) FetchOutboxRelays(ctx context.Context, pubkey string, n int, updateKind10002 bool) []string {
-	fetchGenericList[Relay](sys, ctx, pubkey, 10002, parseRelayFromKind10002, sys.RelayListCache, false)
+	if updateKind10002 {
+		fetchGenericList[Relay](sys, ctx, pubkey, 10002, parseRelayFromKind10002, sys.RelayListCache, false)
+	}
 	return sys.Hints.TopN(pubkey, n)
 }
 
