@@ -24,17 +24,6 @@ func (sys *System) FetchRelays(ctx context.Context, pubkey string) RelayList {
 	return rl
 }
 
-func (sys *System) FetchOutboxRelays(ctx context.Context, pubkey string) []string {
-	rl := sys.FetchRelays(ctx, pubkey)
-	result := make([]string, 0, len(rl.Items))
-	for _, relay := range rl.Items {
-		if relay.Outbox {
-			result = append(result, relay.URL)
-		}
-	}
-	return result
-}
-
 func parseRelayFromKind10002(tag nostr.Tag) (rl Relay, ok bool) {
 	if u := tag.Value(); u != "" && tag[0] == "r" {
 		if !nostr.IsValidRelayURL(u) {

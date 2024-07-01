@@ -8,6 +8,11 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 )
 
+func (sys *System) FetchOutboxRelays(ctx context.Context, pubkey string, n int, updateKind10002 bool) []string {
+	fetchGenericList[Relay](sys, ctx, pubkey, 10002, parseRelayFromKind10002, sys.RelayListCache, false)
+	return sys.Hints.TopN(pubkey, n)
+}
+
 func (sys *System) ExpandQueriesByAuthorAndRelays(
 	ctx context.Context,
 	filter nostr.Filter,
@@ -25,7 +30,7 @@ func (sys *System) ExpandQueriesByAuthorAndRelays(
 	for _, pubkey := range filter.Authors {
 		go func(pubkey string) {
 			defer wg.Done()
-			relayURLs := sys.FetchOutboxRelays(ctx, pubkey)
+			relayURLs := sys.FetchOutboxRelays(ctx, pubkey, 3, true)
 			c := 0
 			for _, r := range relayURLs {
 				relay, err := sys.Pool.EnsureRelay(r)

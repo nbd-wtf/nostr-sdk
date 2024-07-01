@@ -37,7 +37,7 @@ func (p ProfileMetadata) NpubShort() string {
 }
 
 func (p ProfileMetadata) Nprofile(ctx context.Context, sys *System, nrelays int) string {
-	v, _ := nip19.EncodeProfile(p.PubKey, sys.FetchOutboxRelays(ctx, p.PubKey))
+	v, _ := nip19.EncodeProfile(p.PubKey, sys.FetchOutboxRelays(ctx, p.PubKey, 2, false))
 	return v
 }
 

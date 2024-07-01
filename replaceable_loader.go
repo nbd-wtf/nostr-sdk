@@ -113,10 +113,7 @@ func (sys *System) determineRelaysToQuery(ctx context.Context, pubkey string, ki
 	relays := make([]string, 0, 10)
 
 	// search in specific relays for user
-	if kind != 10002 && kind != 3 {
-		// (but not for these kinds otherwise we will create an infinite loop)
-		relays = sys.FetchOutboxRelays(ctx, pubkey)
-	}
+	relays = sys.FetchOutboxRelays(ctx, pubkey, 3, false)
 
 	// use a different set of extra relays depending on the kind
 	switch kind {
