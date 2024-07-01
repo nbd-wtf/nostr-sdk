@@ -66,17 +66,17 @@ func (db *HintDB) Save(pubkey string, relay string, key hints.HintKey, ts nostr.
 
 	rfpk.Entries = entries
 
-	// sort everything from scratch
-	slices.SortFunc(rfpk.Entries, func(a, b RelayEntry) int {
-		return int(b.Sum() - a.Sum())
-	})
-
 	db.OrderedRelaysByPubKey[pubkey] = rfpk
 }
 
 func (db HintDB) TopN(pubkey string, n int) []string {
 	urls := make([]string, 0, n)
 	if rfpk, ok := db.OrderedRelaysByPubKey[pubkey]; ok {
+		// sort everything from scratch
+		slices.SortFunc(rfpk.Entries, func(a, b RelayEntry) int {
+			return int(b.Sum() - a.Sum())
+		})
+
 		for i, re := range rfpk.Entries {
 			urls = append(urls, db.RelayBySerial[re.Relay])
 			if i+1 == n {
