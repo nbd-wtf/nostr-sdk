@@ -18,6 +18,23 @@ func (sys *System) trackEventHints(ie nostr.IncomingEvent) {
 				sys.Hints.Save(ie.PubKey, ie.Relay.URL, hints.LastInRelayList, ie.CreatedAt)
 			}
 		}
+	case nostr.KindContactList:
+		sys.Hints.Save(ie.PubKey, ie.Relay.URL, hints.MostRecentEventFetched, ie.CreatedAt)
+
+		for _, tag := range ie.Tags {
+			if len(tag) < 3 {
+				continue
+			}
+			if IsVirtualRelay(tag[2]) {
+				continue
+			}
+			if p, err := url.Parse(tag[2]); err != nil || (p.Scheme != "wss" && p.Scheme != "ws") {
+				continue
+			}
+			if tag[0] == "p" && nostr.IsValidPublicKey(tag[1]) {
+				sys.Hints.Save(tag[1], tag[2], hints.LastInTag, ie.CreatedAt)
+			}
+		}
 	case nostr.KindTextNote:
 		sys.Hints.Save(ie.PubKey, ie.Relay.URL, hints.MostRecentEventFetched, ie.CreatedAt)
 
