@@ -8,23 +8,31 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 )
 
-func (sys *System) FetchOutboxRelays(ctx context.Context, pubkey string, n int, updateKind10002 bool) []string {
-	if updateKind10002 {
-		fetchGenericList[Relay](sys, ctx, pubkey, 10002, parseRelayFromKind10002, sys.RelayListCache, false)
+var fetchOutboxLocks [5]sync.Mutex
+
+func (sys *System) FetchOutboxRelays(ctx context.Context, pubkey string, n int) []string {
+	idx := pubkey[0] % 5
+	fetchOutboxLocks[idx].Lock()
+	defer fetchOutboxLocks[idx].Unlock()
+
+	if _, ok := sys.RelayListCache.Get(pubkey); !ok {
+		fetchGenericList(sys, ctx, pubkey, 10002, parseRelayFromKind10002, sys.RelayListCache, false)
 	}
-	return sys.Hints.TopN(pubkey, n)
+
+	relays := sys.Hints.TopN(pubkey, n)
+	return relays
 }
 
 func (sys *System) ExpandQueriesByAuthorAndRelays(
 	ctx context.Context,
 	filter nostr.Filter,
-) (map[*nostr.Relay]nostr.Filter, error) {
+) (map[string]nostr.Filter, error) {
 	n := len(filter.Authors)
 	if n == 0 {
 		return nil, fmt.Errorf("no authors in filter")
 	}
 
-	relaysForPubkey := make(map[string][]*nostr.Relay, n)
+	relaysForPubkey := make(map[string][]string, n)
 	mu := sync.Mutex{}
 
 	wg := sync.WaitGroup{}
@@ -32,7 +40,7 @@ func (sys *System) ExpandQueriesByAuthorAndRelays(
 	for _, pubkey := range filter.Authors {
 		go func(pubkey string) {
 			defer wg.Done()
-			relayURLs := sys.FetchOutboxRelays(ctx, pubkey, 3, true)
+			relayURLs := sys.FetchOutboxRelays(ctx, pubkey, 3)
 			c := 0
 			for _, r := range relayURLs {
 				relay, err := sys.Pool.EnsureRelay(r)
@@ -40,7 +48,7 @@ func (sys *System) ExpandQueriesByAuthorAndRelays(
 					continue
 				}
 				mu.Lock()
-				relaysForPubkey[pubkey] = append(relaysForPubkey[pubkey], relay)
+				relaysForPubkey[pubkey] = append(relaysForPubkey[pubkey], relay.URL)
 				mu.Unlock()
 				c++
 				if c == 3 {
@@ -51,7 +59,7 @@ func (sys *System) ExpandQueriesByAuthorAndRelays(
 	}
 	wg.Wait()
 
-	filterForRelay := make(map[*nostr.Relay]nostr.Filter, n) // { [relay]: filter }
+	filterForRelay := make(map[string]nostr.Filter, n) // { [relay]: filter }
 	for pubkey, relays := range relaysForPubkey {
 		for _, relay := range relays {
 			flt, ok := filterForRelay[relay]

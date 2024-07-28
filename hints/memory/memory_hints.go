@@ -88,6 +88,7 @@ func (db HintDB) TopN(pubkey string, n int) []string {
 }
 
 func (db *HintDB) PrintScores() {
+	fmt.Println("= print scores")
 	for pubkey, rfpk := range db.OrderedRelaysByPubKey {
 		fmt.Println("== relay scores for", pubkey)
 		for i, re := range rfpk.Entries {

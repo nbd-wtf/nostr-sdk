@@ -8,6 +8,10 @@ import (
 )
 
 func (sys *System) trackEventHints(ie nostr.IncomingEvent) {
+	if IsVirtualRelay(ie.Relay.URL) {
+		return
+	}
+
 	switch ie.Kind {
 	case nostr.KindRelayListMetadata:
 		for _, tag := range ie.Tags {
@@ -15,7 +19,7 @@ func (sys *System) trackEventHints(ie nostr.IncomingEvent) {
 				continue
 			}
 			if len(tag) == 2 || (tag[2] == "" || tag[2] == "write") {
-				sys.Hints.Save(ie.PubKey, ie.Relay.URL, hints.LastInRelayList, ie.CreatedAt)
+				sys.Hints.Save(ie.PubKey, tag[1], hints.LastInRelayList, ie.CreatedAt)
 			}
 		}
 	case nostr.KindContactList:

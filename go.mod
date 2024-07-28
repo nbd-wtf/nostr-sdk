@@ -1,13 +1,15 @@
 module github.com/nbd-wtf/nostr-sdk
 
-go 1.21
+go 1.22
+
+toolchain go1.22.4
 
 require (
-	github.com/fiatjaf/eventstore v0.3.11
+	github.com/fiatjaf/eventstore v0.7.1
 	github.com/fiatjaf/generic-ristretto v0.0.1
 	github.com/graph-gophers/dataloader/v7 v7.1.0
-	github.com/nbd-wtf/go-nostr v0.31.3
-	github.com/stretchr/testify v1.8.4
+	github.com/nbd-wtf/go-nostr v0.34.4
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
@@ -34,7 +36,7 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/sys v0.14.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/text v0.15.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

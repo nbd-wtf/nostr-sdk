@@ -37,7 +37,7 @@ func (p ProfileMetadata) NpubShort() string {
 }
 
 func (p ProfileMetadata) Nprofile(ctx context.Context, sys *System, nrelays int) string {
-	v, _ := nip19.EncodeProfile(p.PubKey, sys.FetchOutboxRelays(ctx, p.PubKey, 2, false))
+	v, _ := nip19.EncodeProfile(p.PubKey, sys.FetchOutboxRelays(ctx, p.PubKey, 2))
 	return v
 }
 
@@ -116,25 +116,14 @@ func (sys *System) FetchUserEvents(ctx context.Context, filter nostr.Filter) (ma
 	results := make(map[string][]*nostr.Event)
 	wg := sync.WaitGroup{}
 	wg.Add(len(filters))
-	for relay, filter := range filters {
-		go func(relay *nostr.Relay, filter nostr.Filter) {
+	for relayURL, filter := range filters {
+		go func(relayURL string, filter nostr.Filter) {
 			defer wg.Done()
 			filter.Limit = filter.Limit * len(filter.Authors) // hack
-			sub, err := relay.Subscribe(ctx, nostr.Filters{filter})
-			if err != nil {
-				return
+			for ie := range sys.Pool.SubManyEose(ctx, []string{relayURL}, nostr.Filters{filter}) {
+				results[ie.PubKey] = append(results[ie.PubKey], ie.Event)
 			}
-			for {
-				select {
-				case evt := <-sub.Events:
-					if evt != nil {
-						results[evt.PubKey] = append(results[evt.PubKey], evt)
-					}
-				case <-sub.EndOfStoredEvents:
-					return
-				}
-			}
-		}(relay, filter)
+		}(relayURL, filter)
 	}
 	wg.Wait()
 

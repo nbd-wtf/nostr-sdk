@@ -16,7 +16,7 @@ const (
 	LastInNIP05
 )
 
-var KeyBasePoints = [8]int64{
+var KeyBasePoints = [7]int64{
 	-500, // attempting has negative power because it may fail
 	700,  // when it succeeds that should cancel the negative effect of trying
 	350,  // a relay list is a very strong indicator

@@ -113,7 +113,12 @@ func (sys *System) determineRelaysToQuery(ctx context.Context, pubkey string, ki
 	relays := make([]string, 0, 10)
 
 	// search in specific relays for user
-	relays = sys.FetchOutboxRelays(ctx, pubkey, 3, false)
+	if kind == 10002 {
+		// prevent infinite loops by jumping directly to this
+		relays = sys.Hints.TopN(pubkey, 3)
+	} else {
+		relays = sys.FetchOutboxRelays(ctx, pubkey, 3)
+	}
 
 	// use a different set of extra relays depending on the kind
 	switch kind {
@@ -152,33 +157,12 @@ func (sys *System) batchReplaceableRelayQueries(
 
 			n := len(filter.Authors)
 
-			relay, err := sys.Pool.EnsureRelay(url)
-			if err != nil {
-				return
-			}
-			sub, _ := relay.Subscribe(ctx, nostr.Filters{filter}, nostr.WithLabel("batch-repl"))
-			if sub == nil {
-				return
-			}
-
 			received := 0
-			for {
-				select {
-				case evt, more := <-sub.Events:
-					if !more {
-						// ctx canceled, sub.Events is closed
-						return
-					}
-
-					all <- evt
-
-					received++
-					if received >= n {
-						// we got all events we asked for, unless the relay is shitty and sent us two from the same
-						return
-					}
-				case <-sub.EndOfStoredEvents:
-					// close here
+			for ie := range sys.Pool.SubManyEose(ctx, []string{url}, nostr.Filters{filter}) {
+				all <- ie.Event
+				received++
+				if received >= n {
+					// we got all events we asked for, unless the relay is shitty and sent us two from the same
 					return
 				}
 			}
