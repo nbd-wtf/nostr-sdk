@@ -8,13 +8,7 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 )
 
-var fetchOutboxLocks [5]sync.Mutex
-
 func (sys *System) FetchOutboxRelays(ctx context.Context, pubkey string, n int) []string {
-	idx := pubkey[0] % 5
-	fetchOutboxLocks[idx].Lock()
-	defer fetchOutboxLocks[idx].Unlock()
-
 	if rl, ok := sys.RelayListCache.Get(pubkey); !ok || (rl.Event != nil && rl.Event.CreatedAt < nostr.Now()-60*60*24*7) {
 		// try to fetch relays list again if we don't have one or if ours is a week old
 		fetchGenericList(sys, ctx, pubkey, 10002, parseRelayFromKind10002, sys.RelayListCache, false)
