@@ -47,49 +47,60 @@ func (sys *System) batchLoadReplaceableEvents(
 	keyPositions := make(map[string]int)          // { [pubkey]: slice_index }
 	relayFilters := make(map[string]nostr.Filter) // { [relayUrl]: filter }
 
+	wg := sync.WaitGroup{}
+	wg.Add(len(pubkeys))
+	cm := sync.Mutex{}
+
 	for i, pubkey := range pubkeys {
-		// if we're attempting this query with a short key (last 8 characters), stop here
-		if len(pubkey) != 64 {
-			results[i] = &dataloader.Result[*nostr.Event]{
-				Error: fmt.Errorf("won't proceed to query relays with a shortened key (%d)", kind),
-			}
-			continue
-		}
-
-		// save attempts here so we don't try the same failed query over and over
-		if doItNow := DoThisNotMoreThanOnceAnHour("repl:" + strconv.Itoa(kind) + pubkey); !doItNow {
-			results[i] = &dataloader.Result[*nostr.Event]{
-				Error: fmt.Errorf("last attempt failed, waiting more to try again"),
-			}
-			continue
-		}
-
 		// build batched queries for the external relays
 		keyPositions[pubkey] = i // this is to help us know where to save the result later
 
-		// gather relays we'll use for this pubkey
-		relays := sys.determineRelaysToQuery(ctx, pubkey, kind)
+		go func(i int, pubkey string) {
+			defer wg.Done()
 
-		// by default we will return an error (this will be overwritten when we find an event)
-		results[i] = &dataloader.Result[*nostr.Event]{
-			Error: fmt.Errorf("couldn't find a kind %d event anywhere %v", kind, relays),
-		}
-
-		for _, relay := range relays {
-			// each relay will have a custom filter
-			filter, ok := relayFilters[relay]
-			if !ok {
-				filter = nostr.Filter{
-					Kinds:   []int{kind},
-					Authors: make([]string, 0, batchSize-i /* this and all pubkeys after this can be added */),
+			// if we're attempting this query with a short key (last 8 characters), stop here
+			if len(pubkey) != 64 {
+				results[i] = &dataloader.Result[*nostr.Event]{
+					Error: fmt.Errorf("won't proceed to query relays with a shortened key (%d)", kind),
 				}
+				return
 			}
-			filter.Authors = append(filter.Authors, pubkey)
-			relayFilters[relay] = filter
-		}
+
+			// save attempts here so we don't try the same failed query over and over
+			if doItNow := DoThisNotMoreThanOnceAnHour("repl:" + strconv.Itoa(kind) + pubkey); !doItNow {
+				results[i] = &dataloader.Result[*nostr.Event]{
+					Error: fmt.Errorf("last attempt failed, waiting more to try again"),
+				}
+				return
+			}
+
+			// gather relays we'll use for this pubkey
+			relays := sys.determineRelaysToQuery(ctx, pubkey, kind)
+
+			// by default we will return an error (this will be overwritten when we find an event)
+			results[i] = &dataloader.Result[*nostr.Event]{
+				Error: fmt.Errorf("couldn't find a kind %d event anywhere %v", kind, relays),
+			}
+
+			cm.Lock()
+			for _, relay := range relays {
+				// each relay will have a custom filter
+				filter, ok := relayFilters[relay]
+				if !ok {
+					filter = nostr.Filter{
+						Kinds:   []int{kind},
+						Authors: make([]string, 0, batchSize-i /* this and all pubkeys after this can be added */),
+					}
+				}
+				filter.Authors = append(filter.Authors, pubkey)
+				relayFilters[relay] = filter
+			}
+			cm.Unlock()
+		}(i, pubkey)
 	}
 
 	// query all relays with the prepared filters
+	wg.Wait()
 	multiSubs := sys.batchReplaceableRelayQueries(ctx, relayFilters)
 	for {
 		select {
@@ -116,20 +127,25 @@ func (sys *System) determineRelaysToQuery(ctx context.Context, pubkey string, ki
 	if kind == 10002 {
 		// prevent infinite loops by jumping directly to this
 		relays = sys.Hints.TopN(pubkey, 3)
+	} else if kind == 0 {
+		// leave room for one hardcoded relay because people are stupid
+		relays = sys.FetchOutboxRelays(ctx, pubkey, 2)
 	} else {
 		relays = sys.FetchOutboxRelays(ctx, pubkey, 3)
 	}
 
 	// use a different set of extra relays depending on the kind
-	switch kind {
-	case 0:
-		relays = append(relays, pickNext(sys.MetadataRelays), pickNext(sys.MetadataRelays))
-	case 3:
-		relays = append(relays, pickNext(sys.FollowListRelays), pickNext(sys.FollowListRelays))
-	case 10002:
-		relays = append(relays, pickNext(sys.RelayListRelays), pickNext(sys.RelayListRelays))
-	default:
-		relays = append(relays, pickNext(sys.FallbackRelays), pickNext(sys.FallbackRelays))
+	for len(relays) < 3 {
+		switch kind {
+		case 0:
+			relays = append(relays, pickNext(sys.MetadataRelays))
+		case 3:
+			relays = append(relays, pickNext(sys.FollowListRelays))
+		case 10002:
+			relays = append(relays, pickNext(sys.RelayListRelays))
+		default:
+			relays = append(relays, pickNext(sys.FallbackRelays))
+		}
 	}
 
 	return relays
@@ -152,9 +168,6 @@ func (sys *System) batchReplaceableRelayQueries(
 	for url, filter := range relayFilters {
 		go func(url string, filter nostr.Filter) {
 			defer wg.Done()
-			ctx, cancel := context.WithTimeout(ctx, time.Second*4)
-			defer cancel()
-
 			n := len(filter.Authors)
 
 			received := 0

@@ -68,22 +68,21 @@ func (sys *System) FetchOrStoreProfileMetadata(ctx context.Context, pubkey strin
 }
 
 func (sys *System) fetchProfileMetadata(ctx context.Context, pubkey string) (pm ProfileMetadata, fromInternal bool) {
-	if pm, fromInternal = sys.LoadProfileMetadataFromCache(ctx, pubkey); fromInternal {
-		return pm, fromInternal
+	if pm, loaded := sys.LoadProfileMetadataFromCache(ctx, pubkey); loaded {
+		return pm, true
 	}
 
-	meta := ProfileMetadata{PubKey: pubkey}
+	pm.PubKey = pubkey
 
 	thunk0 := sys.replaceableLoaders[0].Load(ctx, pubkey)
 	evt, err := thunk0()
 	if err == nil {
-		meta, err = ParseMetadata(evt)
+		pm, err = ParseMetadata(evt)
 		if err == nil {
-			sys.MetadataCache.SetWithTTL(pubkey, meta, time.Hour*6)
+			sys.MetadataCache.SetWithTTL(pubkey, pm, time.Hour*6)
 		}
 	}
-
-	return meta, false
+	return pm, false
 }
 
 func (sys *System) LoadProfileMetadataFromCache(ctx context.Context, pubkey string) (ProfileMetadata, bool) {
