@@ -28,8 +28,10 @@ type System struct {
 	Store            eventstore.Store
 	Signer           Signer
 
-	StoreRelay         nostr.RelayStore
-	replaceableLoaders map[int]*dataloader.Loader[string, *nostr.Event]
+	StoreRelay nostr.RelayStore
+
+	replaceableLoaders   map[int]*dataloader.Loader[string, *nostr.Event]
+	outboxShortTermCache cache.Cache32[[]string]
 }
 
 type SystemModifier func(sys *System)
@@ -64,6 +66,8 @@ func NewSystem(mods ...SystemModifier) *System {
 			"wss://relay.noswhere.com",
 		},
 		Hints: memory_hints.NewHintDB(),
+
+		outboxShortTermCache: cache_memory.New32[[]string](1000),
 	}
 
 	sys.Pool = nostr.NewSimplePool(context.Background(),

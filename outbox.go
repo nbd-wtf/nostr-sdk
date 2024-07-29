@@ -4,17 +4,30 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 )
 
 func (sys *System) FetchOutboxRelays(ctx context.Context, pubkey string, n int) []string {
+	if relays, ok := sys.outboxShortTermCache.Get(pubkey); ok {
+		if len(relays) > n {
+			relays = relays[0:n]
+		}
+		return relays
+	}
+
 	if rl, ok := sys.RelayListCache.Get(pubkey); !ok || (rl.Event != nil && rl.Event.CreatedAt < nostr.Now()-60*60*24*7) {
 		// try to fetch relays list again if we don't have one or if ours is a week old
 		fetchGenericList(sys, ctx, pubkey, 10002, parseRelayFromKind10002, sys.RelayListCache, false)
 	}
 
-	relays := sys.Hints.TopN(pubkey, n)
+	relays := sys.Hints.TopN(pubkey, 6)
+	sys.outboxShortTermCache.SetWithTTL(pubkey, relays, time.Minute*2)
+
+	if len(relays) > n {
+		relays = relays[0:n]
+	}
 	return relays
 }
 
