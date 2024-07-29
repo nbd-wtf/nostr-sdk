@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"sync"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/nostr-sdk/hints"
@@ -14,6 +15,8 @@ var _ hints.HintsDB = (*HintDB)(nil)
 type HintDB struct {
 	RelayBySerial         []string
 	OrderedRelaysByPubKey map[string]RelaysForPubKey
+
+	sync.Mutex
 }
 
 func NewHintDB() *HintDB {
@@ -37,6 +40,8 @@ func (db *HintDB) Save(pubkey string, relay string, key hints.HintKey, ts nostr.
 		db.RelayBySerial = append(db.RelayBySerial, relay)
 	}
 
+	db.Lock()
+	defer db.Unlock()
 	// fmt.Println(" ", relay, "index", relayIndex, "--", "adding", hints.HintKey(key).String(), ts)
 
 	rfpk, _ := db.OrderedRelaysByPubKey[pubkey]
@@ -69,7 +74,10 @@ func (db *HintDB) Save(pubkey string, relay string, key hints.HintKey, ts nostr.
 	db.OrderedRelaysByPubKey[pubkey] = rfpk
 }
 
-func (db HintDB) TopN(pubkey string, n int) []string {
+func (db *HintDB) TopN(pubkey string, n int) []string {
+	db.Lock()
+	defer db.Unlock()
+
 	urls := make([]string, 0, n)
 	if rfpk, ok := db.OrderedRelaysByPubKey[pubkey]; ok {
 		// sort everything from scratch
@@ -88,6 +96,9 @@ func (db HintDB) TopN(pubkey string, n int) []string {
 }
 
 func (db *HintDB) PrintScores() {
+	db.Lock()
+	defer db.Unlock()
+
 	fmt.Println("= print scores")
 	for pubkey, rfpk := range db.OrderedRelaysByPubKey {
 		fmt.Println("== relay scores for", pubkey)
