@@ -8,7 +8,7 @@ require (
 	github.com/fiatjaf/eventstore v0.7.1
 	github.com/fiatjaf/generic-ristretto v0.0.1
 	github.com/graph-gophers/dataloader/v7 v7.1.0
-	github.com/nbd-wtf/go-nostr v0.34.4
+	github.com/nbd-wtf/go-nostr v0.34.5
 	github.com/stretchr/testify v1.9.0
 )
 
