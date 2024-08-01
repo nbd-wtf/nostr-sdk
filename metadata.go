@@ -11,7 +11,12 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
 	"github.com/nbd-wtf/nostr-sdk/hints"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var tracer = otel.Tracer("njump")
 
 type ProfileMetadata struct {
 	PubKey string       `json:"-"` // must always be set otherwise things will break
@@ -53,22 +58,6 @@ func (p ProfileMetadata) ShortName() string {
 	return p.NpubShort()
 }
 
-// FetchProfileMetadata fetches metadata for a given user from the local cache, or from the local store,
-// or, failing these, from the target user's defined outbox relays -- then caches the result.
-func (sys *System) FetchProfileMetadata(ctx context.Context, pubkey string) ProfileMetadata {
-	pm, _ := sys.fetchProfileMetadata(ctx, pubkey)
-	return pm
-}
-
-// FetchOrStoreProfileMetadata is like FetchProfileMetadata, but also saves the result to the sys.Store
-func (sys *System) FetchOrStoreProfileMetadata(ctx context.Context, pubkey string) ProfileMetadata {
-	pm, fromInternal := sys.fetchProfileMetadata(ctx, pubkey)
-	if !fromInternal && pm.Event != nil {
-		sys.StoreRelay.Publish(ctx, *pm.Event)
-	}
-	return pm
-}
-
 // FetchProfileFromInput takes an nprofile, npub, nip05 or hex pubkey and returns a ProfileMetadata,
 // updating the hintsDB in the process with any eventual relay hints
 func (sys System) FetchProfileFromInput(ctx context.Context, nip19OrNip05Code string) (ProfileMetadata, error) {
@@ -88,46 +77,74 @@ func (sys System) FetchProfileFromInput(ctx context.Context, nip19OrNip05Code st
 		}
 	}
 
-	pm, _ := sys.fetchProfileMetadata(ctx, p.PublicKey)
+	pm := sys.FetchProfileMetadata(ctx, p.PublicKey)
 	return pm, nil
 }
 
-func (sys *System) fetchProfileMetadata(ctx context.Context, pubkey string) (pm ProfileMetadata, fromInternal bool) {
-	if pm, loaded := sys.LoadProfileMetadataFromCache(ctx, pubkey); loaded {
-		return pm, true
-	}
+var fetchProfileMetadataMutexes [8]sync.Mutex
 
-	pm.PubKey = pubkey
+// FetchProfileMetadata fetches metadata for a given user from the local cache, or from the local store,
+// or, failing these, from the target user's defined outbox relays -- then caches the result.
+func (sys *System) FetchProfileMetadata(ctx context.Context, pubkey string) (pm ProfileMetadata) {
+	ctx, spanx := tracer.Start(ctx, "fetch-profile", trace.WithAttributes(attribute.String("pubkey", pubkey)))
+	defer spanx.End()
 
-	thunk0 := sys.replaceableLoaders[0].Load(ctx, pubkey)
-	evt, err := thunk0()
-	if err == nil {
-		pm, err = ParseMetadata(evt)
-		if err == nil {
-			sys.MetadataCache.SetWithTTL(pubkey, pm, time.Hour*6)
-		}
-	}
-	return pm, false
-}
+	fmt.Println("< locking", pubkey[25]%8, pubkey)
+	// fetchProfileMetadataMutexes[pubkey[25]%8].Lock()
+	defer fmt.Println("> unlocking", pubkey[25]%8, pubkey)
+	// defer fetchProfileMetadataMutexes[pubkey[25]%8].Unlock()
+	fmt.Println("    fetching", pubkey)
 
-func (sys *System) LoadProfileMetadataFromCache(ctx context.Context, pubkey string) (ProfileMetadata, bool) {
+	_, span := tracer.Start(ctx, "metadata-from-cache")
 	if v, ok := sys.MetadataCache.Get(pubkey); ok {
-		return v, true
+		return v
 	}
+	span.End()
 
 	if sys.Store != nil {
+		ctx, span := tracer.Start(ctx, "metadata-from-store")
 		res, _ := sys.StoreRelay.QuerySync(ctx, nostr.Filter{Kinds: []int{0}, Authors: []string{pubkey}})
 		if len(res) != 0 {
 			if m, err := ParseMetadata(res[0]); err == nil {
 				m.PubKey = pubkey
 				m.Event = res[0]
+				_, span2 := tracer.Start(ctx, "save-on-cache")
 				sys.MetadataCache.SetWithTTL(pubkey, m, time.Hour*6)
-				return m, true
+				span2.End()
+				span.End()
+				return m
 			}
 		}
+		span.End()
 	}
 
-	return ProfileMetadata{PubKey: pubkey}, false
+	pm.PubKey = pubkey
+
+	ctx, span = tracer.Start(ctx, "metadata-from-relays")
+	defer span.End()
+
+	fmt.Println("      going to relays for", pubkey)
+	thunk0 := sys.replaceableLoaders[0].Load(ctx, pubkey)
+	evt, err := thunk0()
+	if err == nil {
+		pm, _ = ParseMetadata(evt)
+
+		// save on store even if the metadata json is malformed
+		_, span2 := tracer.Start(ctx, "save-on-store")
+		if sys.StoreRelay != nil && pm.Event != nil {
+			sys.StoreRelay.Publish(ctx, *pm.Event)
+		}
+		span2.End()
+	}
+
+	// save on cache even if the metadata isn't found (unless the context was canceled)
+	if err != context.Canceled {
+		_, span2 := tracer.Start(ctx, "save-on-cache")
+		sys.MetadataCache.SetWithTTL(pubkey, pm, time.Hour*6)
+		span2.End()
+	}
+
+	return pm
 }
 
 // FetchUserEvents fetches events from each users' outbox relays, grouping queries when possible.
