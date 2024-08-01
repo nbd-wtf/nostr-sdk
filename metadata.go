@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
+	"github.com/nbd-wtf/nostr-sdk/hints"
 )
 
 type ProfileMetadata struct {
@@ -65,6 +67,29 @@ func (sys *System) FetchOrStoreProfileMetadata(ctx context.Context, pubkey strin
 		sys.StoreRelay.Publish(ctx, *pm.Event)
 	}
 	return pm
+}
+
+// FetchProfileFromInput takes an nprofile, npub, nip05 or hex pubkey and returns a ProfileMetadata,
+// updating the hintsDB in the process with any eventual relay hints
+func (sys System) FetchProfileFromInput(ctx context.Context, nip19OrNip05Code string) (ProfileMetadata, error) {
+	p := InputToProfile(ctx, nip19OrNip05Code)
+	if p == nil {
+		return ProfileMetadata{}, fmt.Errorf("couldn't decode profile reference")
+	}
+
+	hintType := hints.LastInNIP05
+	if strings.HasPrefix(nip19OrNip05Code, "nprofile") {
+		hintType = hints.LastInNprofile
+	}
+	for _, r := range p.Relays {
+		nm := nostr.NormalizeURL(r)
+		if !IsVirtualRelay(nm) {
+			sys.Hints.Save(p.PublicKey, nm, hintType, nostr.Now())
+		}
+	}
+
+	pm, _ := sys.fetchProfileMetadata(ctx, p.PublicKey)
+	return pm, nil
 }
 
 func (sys *System) fetchProfileMetadata(ctx context.Context, pubkey string) (pm ProfileMetadata, fromInternal bool) {
