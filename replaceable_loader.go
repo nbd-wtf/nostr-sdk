@@ -28,9 +28,9 @@ func (sys *System) createReplaceableDataloader(kind int) *dataloader.Loader[stri
 		) []*dataloader.Result[*nostr.Event] {
 			return sys.batchLoadReplaceableEvents(ctx, kind, pubkeys)
 		},
-		dataloader.WithBatchCapacity[string, *nostr.Event](400),
+		dataloader.WithBatchCapacity[string, *nostr.Event](60),
 		dataloader.WithClearCacheOnBatch[string, *nostr.Event](),
-		dataloader.WithWait[string, *nostr.Event](time.Millisecond*400),
+		dataloader.WithWait[string, *nostr.Event](time.Millisecond*350),
 	)
 }
 
@@ -39,7 +39,7 @@ func (sys *System) batchLoadReplaceableEvents(
 	kind int,
 	pubkeys []string,
 ) []*dataloader.Result[*nostr.Event] {
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
 	defer cancel()
 
 	batchSize := len(pubkeys)
