@@ -23,11 +23,17 @@ func (sys *System) FetchOutboxRelays(ctx context.Context, pubkey string, n int) 
 	}
 
 	relays := sys.Hints.TopN(pubkey, 6)
+
+	if len(relays) == 0 {
+		return []string{"wss://relay.damus.io", "wss://nos.lol"}
+	}
+
 	sys.outboxShortTermCache.SetWithTTL(pubkey, relays, time.Minute*2)
 
 	if len(relays) > n {
 		relays = relays[0:n]
 	}
+
 	return relays
 }
 

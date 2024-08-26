@@ -1,8 +1,6 @@
 package sdk
 
 import (
-	"context"
-
 	"github.com/nbd-wtf/go-nostr"
 )
 
@@ -15,14 +13,6 @@ type Relay struct {
 }
 
 func (r Relay) Value() string { return r.URL }
-
-func (sys *System) FetchRelays(ctx context.Context, pubkey string) RelayList {
-	rl, _ := fetchGenericList[Relay](sys, ctx, pubkey, 10002, parseRelayFromKind10002, sys.RelayListCache, false)
-	if len(rl.Items) == 0 {
-		rl.Items = append(rl.Items, Relay{"wss://relay.damus.io", true, true}, Relay{"wss://nos.lol", true, true})
-	}
-	return rl
-}
 
 func parseRelayFromKind10002(tag nostr.Tag) (rl Relay, ok bool) {
 	if u := tag.Value(); u != "" && tag[0] == "r" {
