@@ -1,4 +1,4 @@
-package sdk
+package signer
 
 import (
 	"context"
@@ -26,26 +26,24 @@ type SignerOptions struct {
 	PasswordHandler       func() string
 }
 
-func (sys *System) InitSigner(ctx context.Context, input string, opts *SignerOptions) error {
+func New(ctx context.Context, pool *nostr.SimplePool, input string, opts *SignerOptions) (Signer, error) {
 	if opts == nil {
 		opts = &SignerOptions{}
 	}
 
 	if strings.HasPrefix(input, "ncryptsec") {
 		if opts.PasswordHandler != nil {
-			sys.Signer = &EncryptedKeySigner{input, "", opts.PasswordHandler}
-			return nil
+			return &EncryptedKeySigner{input, "", opts.PasswordHandler}, nil
 		}
 		sec, err := nip49.Decrypt(input, opts.Password)
 		if err != nil {
 			if opts.Password == "" {
-				return fmt.Errorf("failed to decrypt with blank password: %w", err)
+				return nil, fmt.Errorf("failed to decrypt with blank password: %w", err)
 			}
-			return fmt.Errorf("failed to decrypt with given password: %w", err)
+			return nil, fmt.Errorf("failed to decrypt with given password: %w", err)
 		}
 		pk, _ := nostr.GetPublicKey(sec)
-		sys.Signer = KeySigner{sec, pk}
-		return nil
+		return KeySigner{sec, pk}, nil
 	} else if nip46.IsValidBunkerURL(input) || nip05.IsValidIdentifier(input) {
 		bcsk := nostr.GeneratePrivateKey()
 		oa := func(url string) { println("auth_url received but not handled") }
@@ -57,23 +55,21 @@ func (sys *System) InitSigner(ctx context.Context, input string, opts *SignerOpt
 			oa = opts.BunkerAuthHandler
 		}
 
-		bunker, err := nip46.ConnectBunker(ctx, bcsk, input, sys.Pool, oa)
+		bunker, err := nip46.ConnectBunker(ctx, bcsk, input, pool, oa)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		sys.Signer = BunkerSigner{bunker}
+		return BunkerSigner{bunker}, nil
 	} else if prefix, parsed, err := nip19.Decode(input); err == nil && prefix == "nsec" {
 		sec := parsed.(string)
 		pk, _ := nostr.GetPublicKey(sec)
-		sys.Signer = KeySigner{sec, pk}
-		return nil
+		return KeySigner{sec, pk}, nil
 	} else if nostr.IsValid32ByteHex(input) {
 		pk, _ := nostr.GetPublicKey(input)
-		sys.Signer = KeySigner{input, pk}
-		return nil
+		return KeySigner{input, pk}, nil
 	}
 
-	return fmt.Errorf("unsupported input '%s'", input)
+	return nil, fmt.Errorf("unsupported input '%s'", input)
 }
 
 type KeySigner struct {

@@ -26,7 +26,6 @@ type System struct {
 	UserSearchRelays []string
 	NoteSearchRelays []string
 	Store            eventstore.Store
-	Signer           Signer
 
 	StoreRelay nostr.RelayStore
 
