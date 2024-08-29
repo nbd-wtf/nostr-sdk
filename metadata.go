@@ -76,8 +76,6 @@ func (sys System) FetchProfileFromInput(ctx context.Context, nip19OrNip05Code st
 	return pm, nil
 }
 
-var fetchProfileMetadataMutexes [8]sync.Mutex
-
 // FetchProfileMetadata fetches metadata for a given user from the local cache, or from the local store,
 // or, failing these, from the target user's defined outbox relays -- then caches the result.
 func (sys *System) FetchProfileMetadata(ctx context.Context, pubkey string) (pm ProfileMetadata) {
