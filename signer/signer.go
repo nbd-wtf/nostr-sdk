@@ -59,7 +59,7 @@ func New(ctx context.Context, pool *nostr.SimplePool, input string, opts *Signer
 		if err != nil {
 			return nil, err
 		}
-		return BunkerSigner{bunker}, nil
+		return BunkerSigner{ctx, bunker}, nil
 	} else if prefix, parsed, err := nip19.Decode(input); err == nil && prefix == "nsec" {
 		sec := parsed.(string)
 		pk, _ := nostr.GetPublicKey(sec)
@@ -111,18 +111,19 @@ func (es *EncryptedKeySigner) SignEvent(evt *nostr.Event) error {
 }
 
 type BunkerSigner struct {
+	ctx    context.Context
 	bunker *nip46.BunkerClient
 }
 
 func (bs BunkerSigner) GetPublicKey() string {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(bs.ctx, time.Second*30)
 	defer cancel()
 	pk, _ := bs.bunker.GetPublicKey(ctx)
 	return pk
 }
 
 func (bs BunkerSigner) SignEvent(evt *nostr.Event) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(bs.ctx, time.Second*30)
 	defer cancel()
 	return bs.bunker.SignEvent(ctx, evt)
 }
