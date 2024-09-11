@@ -6,7 +6,8 @@ require (
 	github.com/fiatjaf/eventstore v0.7.1
 	github.com/fiatjaf/generic-ristretto v0.0.1
 	github.com/graph-gophers/dataloader/v7 v7.1.0
-	github.com/nbd-wtf/go-nostr v0.34.14
+	github.com/jbarnette/contexts v0.0.0-20210213181806-e18321a17072
+	github.com/nbd-wtf/go-nostr v0.35.0
 	github.com/stretchr/testify v1.9.0
 )
 
@@ -38,3 +39,5 @@ require (
 	golang.org/x/text v0.15.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/nbd-wtf/go-nostr => ../go-nostr
